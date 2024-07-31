@@ -5,7 +5,7 @@
 </head>
 <body>
   <h1>IPFS Demo v{{ app_ver }} File Upload</h1>
-  <strong> Current IPFS Peer ID: </strong> <pre> {{ peer_id }} </pre>
+  <strong> Current IPFS Peer ID: <pre> {{ peer_id }} </pre> </strong>
 
   <form id="upload-form">
     <input type="file" id="file-input" name="file">
@@ -24,7 +24,13 @@
         fileList.innerHTML = '';
         data.files.forEach(file => {
           const li = document.createElement('li');
-          li.textContent = file;
+          const downloadLink = document.createElement('a');
+          downloadLink.href = `/file/${file}`;
+          downloadLink.textContent = `Download ${file}`;
+          downloadLink.download = file;  // Trigger download attribute
+
+          li.appendChild(document.createTextNode(file + " - "));
+          li.appendChild(downloadLink);
           fileList.appendChild(li);
         });
       } catch (error) {
