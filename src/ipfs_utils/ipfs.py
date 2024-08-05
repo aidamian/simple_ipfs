@@ -1,5 +1,6 @@
 import requests
 import json
+import subprocess
 
 def ipfs_add_file(file_location, IPFS_API_URL, log_info=lambda *args, **kwargs: None):
   # Add file to IPFS using the HTTP API
@@ -54,3 +55,11 @@ def ipfs_get_id(IPFS_API_URL):
   return peer_id
 
 
+def ipfs_get_file_cli(cid, local_filename, log_info=lambda *args, **kwargs: None):
+  # Download file from IPFS using the CLI
+  log_info(f"Downloading file with CID {cid} to {local_filename}")
+  result = subprocess.run(["ipfs", "get", cid, "-o", local_filename], capture_output=True, text=True)
+  if result.returncode != 0:
+    raise Exception(f"Error downloading file: {result.stderr}")
+  log_info(f"File with CID {cid} saved locally as {local_filename}")
+  return local_filename

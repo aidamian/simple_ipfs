@@ -9,7 +9,11 @@ import json  # Import json for handling JSON data
 import asyncio  # Import asyncio for asynchronous operations
 from datetime import datetime  # Import datetime for timestamping logs
 
-from ipfs_utils.ipfs import ipfs_add_file, ipfs_list_pin_files, ipfs_get_id
+from ipfs_utils.ipfs import (
+  ipfs_add_file, ipfs_list_pin_files, ipfs_get_id,
+  ipfs_get_file_cli
+)
+  
 
 __VER__ = "0.2.2"  # Define the version of the application
 
@@ -38,7 +42,7 @@ app = FastAPI(
 
 # Directory to store temporarily uploaded files
 UPLOAD_DIR = "/app/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)  # Ensure the upload directory exists
+DOWNLOAD_DIR = "/app/downloads"
 
 # IPFS API URL
 IPFS_API_URL = "http://127.0.0.1:5001/api/v0"
@@ -63,6 +67,12 @@ def log_info(info: str, color: str = "reset"):
     print(f"{color_code}[{timestamp}] {info}{reset_code}", flush=True)
     return
     
+
+log_info("Creating upload and download directories...")
+os.makedirs(UPLOAD_DIR, exist_ok=True)  # Ensure the upload directory exists
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)  # Ensure the upload directory exists
+log_info("Directories created.")
+
 
 @app.post("/upload/")
 async def upload_file(file: UploadFile = File(...)):
@@ -102,17 +112,39 @@ async def get_files_ls():
   return result  # Return the list of files
 
 
+
+
 @app.get("/file/{cid}")
 async def get_file(cid: str):
-  """Retrieve a file from IPFS given its CID."""
+  """Retrieve a file from IPFS using CLI given its CID, save it locally, and stream to the client."""
   try:
-    log_info(f"Fetching file with CID: {cid}")
-    response = requests.post(f"{IPFS_API_URL}/get?arg={cid}")
-    response.raise_for_status()
-    return Response(content=response.content, media_type="application/octet-stream")
+
+    # Define a local path to save the file
+    local_filename = f"{DOWNLOAD_DIR}/downloaded_{cid}"
+    
+    # Download the file using the IPFS CLI
+    saved = ipfs_get_file_cli(cid, local_filename, log_info=log_info)    
+    
+    log_info(f"File with CID {cid} saved locally as {local_filename}")
+
+    # Read the file and stream the content
+    log_info(f"Streaming file {saved} to client...")
+    with open(saved, 'rb') as file:
+      file_content = file.read()
+
+    return Response(content=file_content, media_type="application/octet-stream")
+
   except Exception as e:
-    log_info(f"Error fetching file with CID {cid}: {str(e)}", color='r')
-    raise HTTPException(status_code=500, detail=f"Unable to fetch file: {e}")
+    log_info(f"Error processing file with CID {cid}: {str(e)}", color='r')
+    raise HTTPException(status_code=500, detail=f"Unable to process file: {e}")
+
+  finally:
+    # Cleanup: Optionally delete the file after sending it
+    if os.path.exists(local_filename):
+      log_info(f"Deleting file {local_filename} post download...")
+      os.remove(local_filename)
+    
+      
 
 
 
