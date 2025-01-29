@@ -1,9 +1,10 @@
 # Use an official Python runtime as a parent image
-FROM python:3.9
+FROM python:3.11-slim
 
 # Install IPFS
-RUN wget https://dist.ipfs.tech/kubo/v0.29.0/kubo_v0.29.0_linux-amd64.tar.gz && \
-  tar -xvzf kubo_v0.29.0_linux-amd64.tar.gz && \
+         
+RUN wget https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz && \
+  tar -xvzf kubo_v0.32.1_linux-amd64.tar.gz && \
   cd kubo && \
   bash install.sh
 

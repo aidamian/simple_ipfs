@@ -1,65 +1,68 @@
-import requests
-import json
 import subprocess
+import json
 
-def ipfs_add_file(file_location, IPFS_API_URL, log_info=lambda *args, **kwargs: None):
-  # Add file to IPFS using the HTTP API
-  with open(file_location, 'rb') as file_data:  # Open the saved file for reading
-    files = {'file': file_data}  # Prepare the file for upload
-    log_info(f"Adding file to IPFS: {file_location}")
-    response = requests.post(f"{IPFS_API_URL}/add", files=files)  # Add the file to IPFS
-    response.raise_for_status()  # Raise an error if the request was not successful
-    json_data = response.json()  # Parse the JSON response
+class IPFSWrapper:
+  def __init__(self, logger=print):
+    """
+    Initialize the IPFS wrapper with a given logger function.
+    By default, it uses the built-in print function for logging.
+    """
+    self.logger = logger
 
-  # Extract CID from the IPFS output
-  cid = json_data["Hash"]  # Get the CID from the response
-  return cid
+  def run_command(self, cmd_list):
+    """
+    Run a shell command using subprocess and return the stdout.
+    Also log the command and its result.
+    """
+    cmd_str = " ".join(cmd_list)
+    self.logger(f"Running command: {cmd_str}")
+    result = subprocess.run(cmd_list, capture_output=True, text=True)
+    if result.returncode != 0:
+      self.logger(f"Command error: {result.stderr.strip()}")
+      raise Exception(f"Error while running '{cmd_str}': {result.stderr.strip()}")
+    self.logger(f"Command output: {result.stdout.strip()}")
+    return result.stdout.strip()
 
+  def add_file(self, file_path: str) -> str:
+    """
+    Add a file to IPFS via 'ipfs add -q'.
+    Returns the CID of the added file.
+    """
+    output = self.run_command(["ipfs", "add", "-q", file_path])
+    return output  # The CID
 
-def ipfs_list_mutable_files(IPFS_API_URL, log_info=lambda *args, **kwargs: None):
-  url = f"{IPFS_API_URL}/files/ls"  # Prepare the URL to list files in IPFS
-  log_info(f"Retrieving mutable files from {url}")
-  response = requests.post(url)  # List files in IPFS
-  response.raise_for_status()  # Raise an error if the request was not successful
-  dct_data = response.json()
-  files = dct_data["Entries"]  # Get the file entries from the response
-  log_info(f"Received from IPFS: {json.dumps(dct_data, indent=2)}")
-  return files
+  def get_file(self, cid: str, local_filename: str) -> str:
+    """
+    Get a file from IPFS via 'ipfs get <cid> -o <filename>'.
+    Returns the local filename (for convenience).
+    """
+    self.run_command(["ipfs", "get", cid, "-o", local_filename])
+    return local_filename
 
+  def list_pins(self):
+    """
+    List pinned CIDs via 'ipfs pin ls --type=recursive'.
+    Returns a list of pinned CIDs.
+    """
+    output = self.run_command(["ipfs", "pin", "ls", "--type=recursive"])
+    pinned_cids = []
+    for line in output.split("\n"):
+      line = line.strip()
+      if not line:
+        continue
+      parts = line.split()
+      if len(parts) > 0:
+        pinned_cids.append(parts[0])
+    return pinned_cids
 
-def ipfs_list_pin_files(IPFS_API_URL, log_info=lambda *args, **kwargs: None):
-  url = f"{IPFS_API_URL}/pin/ls"  # Prepare the URL to list files in IPFS
-  log_info(f"Retrieving pinned files from {url}")
-  response = requests.post(url)  # List files in IPFS
-  response.raise_for_status()  # Raise an error if the request was not successful
-  dct_data = response.json()
-  files = None
-  log_info(f"Received from IPFS: {json.dumps(dct_data, indent=2)}")
-  try:
-    files = list(dct_data["Keys"].keys())  # Get the file entries from the response
-  except Exception as e:
-    log_info(f"Error parsing response: {str(e)}", color='r')
-  return files
-
-
-def ipfs_get_id(IPFS_API_URL):
-  """Retrieve the IPFS peer ID."""
-  try:
-    # Fetch the peer ID from the IPFS node
-    response = requests.post(f"{IPFS_API_URL}/id")
-    response.raise_for_status()
-    peer_info = response.json()
-    peer_id = peer_info["ID"]
-  except Exception as e:
-    peer_id = "Unavailable: " + str(e)
-  return peer_id
-
-
-def ipfs_get_file_cli(cid, local_filename, log_info=lambda *args, **kwargs: None):
-  # Download file from IPFS using the CLI
-  log_info(f"Downloading file with CID {cid} to {local_filename}")
-  result = subprocess.run(["ipfs", "get", cid, "-o", local_filename], capture_output=True, text=True)
-  if result.returncode != 0:
-    raise Exception(f"Error downloading file: {result.stderr}")
-  log_info(f"File with CID {cid} saved locally as {local_filename}")
-  return local_filename
+  def get_id(self) -> str:
+    """
+    Get the IPFS peer ID via 'ipfs id' (JSON output).
+    Returns the 'ID' field as a string.
+    """
+    output = self.run_command(["ipfs", "id"])
+    try:
+      data = json.loads(output)
+      return data.get("ID", "Unknown")
+    except json.JSONDecodeError:
+      raise Exception("Failed to parse JSON from 'ipfs id' output.")
