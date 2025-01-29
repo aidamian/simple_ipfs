@@ -10,6 +10,9 @@ if [ -n "$SWARM_KEY_CONTENT_BASE64" ]; then
   echo "Using the following swarm.key:"
   cat /root/.ipfs/swarm.key
   chmod 600 /root/.ipfs/swarm.key
+else
+  echo "No SWARM_KEY_CONTENT_BASE64 environment variable set. Not writing swarm. Canceling run..."
+  exit 1
 fi
 
 # Initialize IPFS if needed
@@ -40,6 +43,5 @@ else
 fi
 
 # Start the FastAPI service
-echo "Starting FastAPI..."
-cd /app/src
+echo "Starting FastAPI in $pwd"
 uvicorn main:app --host 0.0.0.0 --port 8000
