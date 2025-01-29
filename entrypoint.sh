@@ -2,18 +2,21 @@
 
 set -e
 
-# Initialize IPFS if not already initialized
-if [ ! -d "/root/.ipfs" ]; then
-  echo "Initializing IPFS..."
+# If we have swarm key content, save it to the IPFS repo
+if [ -n "$SWARM_KEY_CONTENT_BASE64" ]; then
+  echo "Writing swarm.key from env..."
+  mkdir -p /root/.ipfs
+  echo "$SWARM_KEY_CONTENT_BASE64" | base64 -d > /root/.ipfs/swarm.key
+  echo "Using the following swarm.key:"
+  cat /root/.ipfs/swarm.key
+  chmod 600 /root/.ipfs/swarm.key
+fi
+
+# Initialize IPFS if needed
+if [ ! -d "/root/.ipfs" ] || [ ! -f "/root/.ipfs/config" ]; then
   ipfs init
 fi
 
-# Copy our swarm.key into the IPFS repo for a private network
-if [ -f "/app/swarm.key" ]; then
-  echo "Copying swarm key to ~/.ipfs/swarm.key"
-  cp /app/swarm.key /root/.ipfs/swarm.key
-  chmod 600 /root/.ipfs/swarm.key
-fi
 
 # (Optional) remove default public bootstraps so the node doesn't connect to the public network
 echo "Removing public IPFS bootstraps (stay private)..."

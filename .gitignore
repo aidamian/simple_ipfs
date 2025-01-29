@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 .prompt.md
 swarm.key
+swarm_key_base64.txt

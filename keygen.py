@@ -1,5 +1,6 @@
 import os
 import binascii
+import base64
 
 def generate_swarm_key():
   """
@@ -17,14 +18,17 @@ def generate_swarm_key():
     f"{hex_str}\n"
   )
 
+  # Base64-encode the key
+  swarm_key_data = base64.b64encode(swarm_key_data.encode('utf-8')).decode('utf-8')
+
   return swarm_key_data
 
 
 if __name__ == "__main__":
   key_str = generate_swarm_key()
-  print("Generated swarm.key content:")
+  print("Generated swarm_key_base64.txt content:")
   print(key_str)
   # Optionally save to a file
-  with open("swarm.key", "w") as f:
+  with open("swarm_key_base64.txt", "w") as f:
     f.write(key_str)
-  print("Swarm key written to swarm.key")
+  print("Swarm key written to swarm_key_base64.txt")
