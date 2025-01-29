@@ -4,15 +4,30 @@
   <title>IPFS Demo v{{ app_ver }}</title>
 </head>
 <body>
-  <h1>IPFS Demo v{{ app_ver }} File Upload</h1>
-  <strong> Current IPFS Peer ID: <pre> {{ peer_id }} </pre> </strong>
+  <h1>IPFS Demo v{{ app_ver }} (Wrapped Folder Mode)</h1>
 
+  <strong>Current IPFS Peer ID:</strong>
+  <pre>{{ peer_id }}</pre>
+
+  <hr />
+
+  <h3>Upload a File</h3>
   <form id="upload-form">
     <input type="file" id="file-input" name="file">
     <button type="submit">Upload</button>
   </form>
 
-  <h2>Available Files</h2>
+  <hr />
+
+  <h3>Pin a CID Manually</h3>
+  <div>
+    <input type="text" id="cid-input" placeholder="Enter a CID to pin" />
+    <button id="pin-button">Pin CID</button>
+  </div>
+
+  <hr />
+
+  <h2>Available Files (Pinned Folder CIDs)</h2>
   <ul id="file-list"></ul>
 
   <script>
@@ -22,15 +37,15 @@
         const data = await response.json();
         const fileList = document.getElementById('file-list');
         fileList.innerHTML = '';
-        data.files.forEach(file => {
-          const li = document.createElement('li');
-          const downloadLink = document.createElement('a');
-          downloadLink.href = `/file/${file}`;
-          downloadLink.textContent = `Download ${file}`;
-          downloadLink.download = file;  // Trigger download attribute
 
-          li.appendChild(document.createTextNode(file + " - "));
-          li.appendChild(downloadLink);
+        (data.files || []).forEach(cid => {
+          const li = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = `/file/${cid}`;
+          link.textContent = `Download CID: ${cid}`;
+          link.download = cid;  // propose a default download name
+          li.appendChild(document.createTextNode(cid + " - "));
+          li.appendChild(link);
           fileList.appendChild(li);
         });
       } catch (error) {
@@ -41,6 +56,10 @@
     document.getElementById('upload-form').addEventListener('submit', async function(event) {
       event.preventDefault();
       const fileInput = document.getElementById('file-input');
+      if (!fileInput.files.length) {
+        alert("No file selected!");
+        return;
+      }
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
 
@@ -49,12 +68,32 @@
           method: 'POST',
           body: formData
         });
-
         const result = await response.json();
-        alert(`File uploaded with CID: ${result.cid}`);
+        alert(`File uploaded with folder CID: ${result.cid}`);
         fetchFiles();
       } catch (error) {
         console.error('Error uploading file:', error);
+        alert("Error uploading file");
+      }
+    });
+
+    document.getElementById('pin-button').addEventListener('click', async function() {
+      const cidInput = document.getElementById('cid-input');
+      const cidValue = cidInput.value.trim();
+      if (!cidValue) {
+        alert("No CID entered!");
+        return;
+      }
+      try {
+        const response = await fetch(`/pin/${encodeURIComponent(cidValue)}`, {
+          method: 'POST'
+        });
+        const result = await response.json();
+        alert(`Pinned CID: ${result.cid}`);
+        fetchFiles();
+      } catch (error) {
+        console.error('Error pinning CID:', error);
+        alert("Error pinning CID");
       }
     });
 

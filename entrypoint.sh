@@ -3,15 +3,15 @@
 set -e
 
 # If we have swarm key content, save it to the IPFS repo
-if [ -n "$SWARM_KEY_CONTENT_BASE64" ]; then
+if [ -n "$EE_SWARM_KEY_CONTENT_BASE64" ]; then
   echo "Writing swarm.key from env..."
   mkdir -p /root/.ipfs
-  echo "$SWARM_KEY_CONTENT_BASE64" | base64 -d > /root/.ipfs/swarm.key
+  echo "$EE_SWARM_KEY_CONTENT_BASE64" | base64 -d > /root/.ipfs/swarm.key
   echo "Using the following swarm.key:"
   cat /root/.ipfs/swarm.key
   chmod 600 /root/.ipfs/swarm.key
 else
-  echo "No SWARM_KEY_CONTENT_BASE64 environment variable set. Not writing swarm. Canceling run..."
+  echo "No EE_SWARM_KEY_CONTENT_BASE64 environment variable set. Not writing swarm. Canceling run..."
   exit 1
 fi
 

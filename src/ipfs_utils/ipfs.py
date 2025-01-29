@@ -27,17 +27,36 @@ class IPFSWrapper:
     """
     Add a file to IPFS via 'ipfs add -q'.
     Returns the CID of the added file.
+    
+    TODO: add another add/pin to get the CID of the metadata file so each file will 
+    have a CID for the file and a CID for the metadata.
     """
-    output = self.run_command(["ipfs", "add", "-q", file_path])
-    return output  # The CID
+    
+    output = self.run_command(["ipfs", "add", "-q", "-w", file_path])
+    # "ipfs add -w <file>" typically prints two lines:
+    #   added <hash_of_file> <filename>
+    #   added <hash_of_wrapped_folder> <foldername?>
+    # We want the *last* line's CID (the wrapped folder).
+    lines = output.strip().split("\n")
+    if not lines:
+      raise Exception("No output from 'ipfs add -w -q'")
+    folder_cid = lines[-1].strip()
+    return folder_cid
 
   def get_file(self, cid: str, local_filename: str) -> str:
     """
-    Get a file from IPFS via 'ipfs get <cid> -o <filename>'.
-    Returns the local filename (for convenience).
+    Get a file from IPFS via 'ipfs get <cid> -o <folder>'.
+    Retrieve the wrapped directory from IPFS to a local path.
+    local_path will be a *directory* containing the original file as we are using only -w
     """
     self.run_command(["ipfs", "get", cid, "-o", local_filename])
     return local_filename
+  
+  def pin_add(self, cid: str) -> str:
+    """
+    Explicitly pin a CID (and fetch its data) so it appears in the local pinset.
+    """
+    return self.run_command(["ipfs", "pin", "add", cid])  
 
   def list_pins(self):
     """
