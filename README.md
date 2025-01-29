@@ -7,7 +7,7 @@ Simple containerized app with embedded IPFS node
 Generate the base64 encoded IPFS key
 
 ```bash
-python keygen.py
+ipfs_keygen
 ```
 
 copy the `swarm_key_base64.txt` to the target machine then install kubo - the IPFS node manager
