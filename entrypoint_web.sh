@@ -7,8 +7,8 @@ if [ -n "$EE_SWARM_KEY_CONTENT_BASE64" ]; then
   echo "Writing swarm.key from env..."
   mkdir -p /root/.ipfs
   echo "$EE_SWARM_KEY_CONTENT_BASE64" | base64 -d > /root/.ipfs/swarm.key
-  echo "Using the following swarm.key:"
-  cat /root/.ipfs/swarm.key
+  # echo "Using the following swarm.key:"
+  # cat /root/.ipfs/swarm.key
   chmod 600 /root/.ipfs/swarm.key
 else
   echo "No EE_SWARM_KEY_CONTENT_BASE64 environment variable set. Not writing swarm. Canceling run..."

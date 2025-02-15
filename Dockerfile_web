@@ -13,19 +13,16 @@ RUN wget https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz && 
 WORKDIR /app
 
 # Copy the FastAPI app
-ADD requirements.txt /app
-ADD entrypoint.sh /app
-COPY ./src /app
+COPY requirements_web.txt ./requirements.txt
+COPY ./webapp /app
+COPY ./ipfs_utils /app/ipfs_utils
 
 # Install Python dependencies
 RUN pip3 install -r requirements.txt
 
 # Copy and set up the entrypoint script
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint_web.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Expose the FastAPI port
-EXPOSE 8000 
 
 # Run the entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]

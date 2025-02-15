@@ -1,2 +1,5 @@
-docker build -t local_ipfs_test .
-docker run --name ipfs_test2 --rm -p 8002:8000 --env-file=.env -v ipfs_2:/root/.ipfs local_ipfs_test
+docker build -t local_ipfs_test_app -f Dockerfile_app .
+docker run --name ipfs_test2_app --rm \
+  -v ipfs_2_app:/root/.ipfs \
+  -v ipfs_2_app_data:/app/_local_cache \
+  local_ipfs_test_app

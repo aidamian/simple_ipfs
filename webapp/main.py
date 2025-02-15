@@ -6,7 +6,7 @@ import os
 import shutil
 from datetime import datetime
 
-from ipfs_utils.ipfs import IPFSWrapper  # import from your local ipfs.py
+from ipfs_utils.ipfs import IPFSWrapper, log_info
 
 __VER__ = "0.3.0"
 
@@ -23,21 +23,8 @@ DOWNLOAD_DIR = "/app/downloads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-COLOR_CODES = {
-  "g": "\033[92m",
-  "r": "\033[91m",
-  "b": "\033[94m",
-  "y": "\033[93m",
-  "reset": "\033[0m"
-}
 
-def log_info(msg: str, color="reset"):
-  timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-  color_code = COLOR_CODES.get(color, COLOR_CODES["reset"])
-  reset_code = COLOR_CODES["reset"]
-  print(f"{color_code}[{timestamp}] {msg}{reset_code}", flush=True)
-
-ipfs = IPFSWrapper(logger=log_info)
+ipfs = IPFSWrapper()
 
 @app.post("/upload/")
 async def upload_file(file: UploadFile = File(...)):
@@ -88,6 +75,7 @@ def download_file(cid: str):
   then find the single file within that folder and return it with the original filename.
   """
   folder_path = os.path.join(DOWNLOAD_DIR, cid)
+  log_info(f"Downloading file for CID {cid} to {folder_path}", color='y')
   try:
     # 1. ipfs get the folder
     ipfs.get_file(cid, folder_path)
@@ -95,6 +83,7 @@ def download_file(cid: str):
 
     # 2. Assuming there's exactly one file (the typical case for '-w' with a single file).
     entries = os.listdir(folder_path)
+    log_info(f"Entries in folder: {entries}", color='y')
     if len(entries) != 1:
       # If more than one file, or zero, handle accordingly
       raise Exception(f"Expected exactly 1 file in folder, found {entries}")
