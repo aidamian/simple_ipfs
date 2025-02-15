@@ -61,7 +61,7 @@ KillSignal=SIGINT
 WantedBy=multi-user.target
 ```
 
-The run the following commands to enable and start the service
+Then run `./setup.sh` or the following commands to enable and start the service
 
 ```bash
 cp ipfs.service /etc/systemd/system/ipfs.service
@@ -70,8 +70,23 @@ sudo systemctl enable ipfs
 sudo systemctl start ipfs
 ```
 
-Finally inspect the logs with:
+Finally inspect the IPFS logs with:
 ```bash
 # shows the log of the ipfs.service systemd service
 journalctl -u ipfs.service -f -n 1000 -a
 ```
+
+Next, check your IPFS node id
+
+```bash
+# check the id of the IPFS node
+ipfs id
+```
+
+Take the `/ip4/<NODE IP>/tcp/4001/p2p/<PEER ID>` and add it to your client configuration and after starting the clients, check the peers connected to the IPFS node
+
+```bash
+# check the peers connected to the IPFS node
+ipfs swarm peers
+```
+

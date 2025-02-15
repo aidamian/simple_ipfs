@@ -8,6 +8,17 @@ class IPFSWrapper:
     By default, it uses the built-in print function for logging.
     """
     self.logger = logger
+    
+  def P(self, *args, **kwargs):
+    if callable(self.logger):
+      self.logger(*args, **kwargs)
+    elif self.logger is not None:
+      self.logger.P(*args, **kwargs)
+    else:
+      print(*args, **kwargs)
+    return
+      
+
 
   def run_command(self, cmd_list):
     """
@@ -15,13 +26,14 @@ class IPFSWrapper:
     Also log the command and its result.
     """
     cmd_str = " ".join(cmd_list)
-    self.logger(f"Running command: {cmd_str}")
+    self.P(f"Running command: {cmd_str}")
     result = subprocess.run(cmd_list, capture_output=True, text=True)
     if result.returncode != 0:
-      self.logger(f"Command error: {result.stderr.strip()}")
+      self.P(f"Command error: {result.stderr.strip()}")
       raise Exception(f"Error while running '{cmd_str}': {result.stderr.strip()}")
-    self.logger(f"Command output: {result.stdout.strip()}")
+    self.P(f"Command output: {result.stdout.strip()}")
     return result.stdout.strip()
+
 
   def add_file(self, file_path: str) -> str:
     """
@@ -31,7 +43,6 @@ class IPFSWrapper:
     TODO: add another add/pin to get the CID of the metadata file so each file will 
     have a CID for the file and a CID for the metadata.
     """
-    
     output = self.run_command(["ipfs", "add", "-q", "-w", file_path])
     # "ipfs add -w <file>" typically prints two lines:
     #   added <hash_of_file> <filename>
@@ -43,6 +54,7 @@ class IPFSWrapper:
     folder_cid = lines[-1].strip()
     return folder_cid
 
+
   def get_file(self, cid: str, local_filename: str) -> str:
     """
     Get a file from IPFS via 'ipfs get <cid> -o <folder>'.
@@ -51,12 +63,14 @@ class IPFSWrapper:
     """
     self.run_command(["ipfs", "get", cid, "-o", local_filename])
     return local_filename
-  
+
+
   def pin_add(self, cid: str) -> str:
     """
     Explicitly pin a CID (and fetch its data) so it appears in the local pinset.
     """
     return self.run_command(["ipfs", "pin", "add", cid])  
+
 
   def list_pins(self):
     """
@@ -73,6 +87,7 @@ class IPFSWrapper:
       if len(parts) > 0:
         pinned_cids.append(parts[0])
     return pinned_cids
+
 
   def get_id(self) -> str:
     """
