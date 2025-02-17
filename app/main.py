@@ -11,9 +11,8 @@ import signal
 import sys
 from datetime import datetime
 
-# Import IPFSWrapper and log_info from our local module.
-# This assumes that ipfs_utils/ipfs.py is in the proper package structure.
-from ipfs_utils.ipfs import IPFSWrapper, log_info
+from naeural_client.ipfs import R1FSEngine, log_info
+  
 
 # Global constants for file paths (to be mapped as volumes)
 LOCAL_CACHE = './_local_cache'
@@ -29,7 +28,7 @@ EE_IPFS_RELAY=
 """
 
 class IPFSRunner:
-  def __init__(self):
+  def __init__(self, logger):
     """
     Initialize the IPFSRunner:
       - Ensure required directories exist.
@@ -37,6 +36,7 @@ class IPFSRunner:
       - Setup a flag to track if the IPFS daemon has been started.
     """
     self.shutdown_requested = False
+    self.logger = logger
     
     self.__last_generated_time = 0
 
@@ -58,7 +58,6 @@ class IPFSRunner:
     """
     Initialize the config and command files if they don't exist.
     """
-    self.ipfs = IPFSWrapper()
 
     if not os.path.isfile(IPFS_CONFIG_FILE):
       with open(IPFS_CONFIG_FILE, "w") as f:
@@ -98,7 +97,7 @@ class IPFSRunner:
       - Connect to the specified relay and mark IPFS as started.
     Extra checks are added to handle container restarts where ~/.ipfs might already be initialized.
     """
-    if self.ipfs.ipfs_started:
+    if hasattr(self, "ipfs") and self.ipfs.ipfs_started:
       return
 
     if not os.path.isfile(IPFS_CONFIG_FILE):
@@ -126,8 +125,9 @@ class IPFSRunner:
     os.environ['EE_IPFS_RELAY'] = ipfs_relay
     os.environ['EE_SWARM_KEY_CONTENT_BASE64'] = swarm_key
     
-    result = self.ipfs.maybe_start_ipfs()
-    if result:
+    self.ipfs = R1FSEngine(debug=True, logger=self.logger)
+
+    if self.ipfs.ipfs_started:
       self.P("IPFS daemon started successfully.", color='g')
     return
 
@@ -155,7 +155,7 @@ class IPFSRunner:
       return
 
     if not cids:
-      self.P("No CIDs found in command file.", color='r')
+      # self.P("No CIDs found in command file.", color='d')
       return
 
     for cid in cids:
@@ -240,5 +240,6 @@ class IPFSRunner:
     return
 
 if __name__ == "__main__":
-  runner = IPFSRunner()
+  log = Logger("R1FSA", base_folder=".", app_folder="_local_cache")
+  runner = IPFSRunner(log=log)
   runner.run()

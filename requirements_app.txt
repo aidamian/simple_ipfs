@@ -1,1 +1,1 @@
-PyYAML
+naeural_client

@@ -6,7 +6,8 @@ import os
 import shutil
 from datetime import datetime
 
-from ipfs_utils.ipfs import IPFSWrapper, log_info
+from naeural_client import Logger
+from naeural_client.ipfs import R1FSEngine, log_info
 
 __VER__ = "0.3.0"
 

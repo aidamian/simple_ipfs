@@ -20,7 +20,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy application code and configuration
 COPY ./app/ .
-COPY ./ipfs_utils ./ipfs_utils
+
 
 # Set the entrypoint to run our IPFSRunner application
 CMD ["python", "main.py"]
