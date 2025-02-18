@@ -19,14 +19,12 @@ The swarm relay enables your IPFS node to communicate securely within a private 
    ./setup.sh
    ```
    This script downloads the IPFS binary, extracts it, installs Kubo, initializes the IPFS repository, and configures the node to enable relay hops.
-
-3. **Load the Swarm Key**  
-   Next, use the `write_key.sh` script to load your base64-encoded swarm key (generated previously on your dev machine) into your IPFS repository. This script decodes the key and writes it to the proper location (e.g., `/root/.ipfs/swarm.key`):
+   You should **already** have the `swarm_key_base64.txt` file in the same directory as the `setup.sh` script in order for `write_key.sh` to work - ie the script required to load your base64-encoded swarm key (generated previously on your dev machine) into your IPFS repository. This script decodes the key and writes it to the proper location (e.g., `/root/.ipfs/swarm.key`):
    ```bash
    ./write_key.sh
    ```
 
-4. **Starting the Relay as a Service (Optional)**  
+3. **Starting the Relay as a Service (Optional)**  
    If you wish to run your IPFS node as a background service, use the `launch_service.sh` script. This script copies the provided systemd service template, reloads the systemd daemon, enables the service, and starts it. Finally, you can view the logs using the `show.sh` script:
    ```bash
    ./launch_service.sh
@@ -36,7 +34,7 @@ The swarm relay enables your IPFS node to communicate securely within a private 
    ./run.sh
    ```
 
-5. **Verify the Relay Setup**  
+4. **Verify the Relay Setup**  
    After starting the relay, use the command:
    ```bash
    ipfs id

@@ -12,6 +12,7 @@ import sys
 from datetime import datetime
 
 from naeural_client.ipfs import R1FSEngine, log_info
+
   
 
 # Global constants for file paths (to be mapped as volumes)
@@ -19,7 +20,7 @@ LOCAL_CACHE = './_local_cache'
 COMMAND_FILE = os.path.join(LOCAL_CACHE, "commands.txt")
 IPFS_CONFIG_FILE = os.path.join(LOCAL_CACHE, "ifps.ini")  # Contains EE_SWARM_KEY_CONTENT_BASE64 and EE_IPFS_RELAY
 
-CYCLE_INTERVAL = 15
+CYCLE_INTERVAL = 30
 
 DEFAULT_CONFIG = """
 [ipfs]
@@ -185,7 +186,7 @@ class IPFSRunner:
       - List of files in the downloads directory.
     The file is added to IPFS and its CID is appended to a generated_cids.txt file.
     """
-    if time.time() - self.__last_generated_time < 60 and self.__last_generated_time > 0:
+    if time.time() - self.__last_generated_time < (CYCLE_INTERVAL * 10) and self.__last_generated_time > 0:
       return
       
     self.__last_generated_time = time.time()
@@ -240,6 +241,8 @@ class IPFSRunner:
     return
 
 if __name__ == "__main__":
+  from naeural_client import Logger
+  
   log = Logger("R1FSA", base_folder=".", app_folder="_local_cache")
-  runner = IPFSRunner(log=log)
+  runner = IPFSRunner(logger=log)
   runner.run()
