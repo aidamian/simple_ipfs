@@ -11,7 +11,7 @@ import signal
 import sys
 from datetime import datetime
 
-from naeural_client.ipfs import R1FSEngine, log_info
+from ratio1.ipfs import R1FSEngine, Logger
 
   
 
@@ -49,10 +49,7 @@ class IPFSRunner:
     return
   
   def P(self, *args, **kwargs):
-    if hasattr(self, "logger"):
-      self.logger.P(*args, **kwargs)
-    else:
-      log_info(*args, **kwargs)
+    self.logger.P(*args, **kwargs)
     return
   
   def init_config(self):
@@ -162,7 +159,12 @@ class IPFSRunner:
     for cid in cids:
       self.P(f"Processing CID: {cid}")
       try:
-        file_path = self.ipfs.get_file(cid, local_folder=None, pin=True)
+        is_avail = self.ipfs.is_cid_available(cid)
+        if not is_avail:
+          self.P(f"CID {cid} is not available in IPFS.", color='r')
+          continue
+        self.P(f"Pinning CID {cid}...")
+        file_path = self.ipfs.get_file(cid, local_folder=None, pin=True, timeout=10)
         self.P(f"Downloaded file: {file_path}", color='g')
         if self.is_text_file(file_path):
           try:
@@ -243,6 +245,6 @@ class IPFSRunner:
 if __name__ == "__main__":
   from naeural_client import Logger
   
-  log = Logger("R1FSA", base_folder=".", app_folder="_local_cache")
+  log = Logger("R1FSA", base_folder=".", app_folder=LOCAL_CACHE)
   runner = IPFSRunner(logger=log)
   runner.run()

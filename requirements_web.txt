@@ -4,4 +4,4 @@ uvicorn
 aiofiles
 requests
 jinja2
-naeural_client
+ratio1
