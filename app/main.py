@@ -1,3 +1,19 @@
+"""
+R1FS testing script.
+This script is designed to run in a Docker container and perform the following tasks:
+- Use the predefined location for checking the IPFS configuration file.
+- start R1FS and run a loop every 15 seconds where it:
+  - checks if the IPFS daemon is running
+  - processes a command file where CIDs can be added
+  - generates a random status file (YAML or Pickle) and adds it to IPFS
+  - appends the CID of the generated file to a generated_cids.txt file
+  
+
+1: 12D3KooWNg4hRPtAv6QGE86zkmfDRk4maPLbMXraDKaESFiLuwwu
+2: 12D3KooWE4ja3ie34b7mfiXs8XtrmxJCFxN7BCzPRePuRvWC1xy6
+
+"""
+
 import os
 import time
 import random
@@ -11,12 +27,14 @@ import signal
 import sys
 from datetime import datetime
 
-from ratio1.ipfs import R1FSEngine, Logger
+from ratio1.ipfs import R1FSEngine
+
+__VER__ = "0.2.1"
 
   
 
 # Global constants for file paths (to be mapped as volumes)
-LOCAL_CACHE = './_local_cache'
+LOCAL_CACHE = '_local_cache'
 COMMAND_FILE = os.path.join(LOCAL_CACHE, "commands.txt")
 IPFS_CONFIG_FILE = os.path.join(LOCAL_CACHE, "ifps.ini")  # Contains EE_SWARM_KEY_CONTENT_BASE64 and EE_IPFS_RELAY
 
@@ -82,6 +100,14 @@ class IPFSRunner:
     """
     lower = filename.lower()
     return lower.endswith(".txt") or lower.endswith(".json") or lower.endswith(".yaml") or lower.endswith(".yml")
+  
+
+  def is_pickle_file(self, filename):
+    """
+    Returns True if the file extension indicates a pickle file.
+    """
+    lower = filename.lower()
+    return lower.endswith(".pkl") or lower.endswith(".pickle")
 
 
   def maybe_check_and_start_ipfs(self):
@@ -95,30 +121,33 @@ class IPFSRunner:
       - Connect to the specified relay and mark IPFS as started.
     Extra checks are added to handle container restarts where ~/.ipfs might already be initialized.
     """
+    result = False
+    
     if hasattr(self, "ipfs") and self.ipfs.ipfs_started:
-      return
+      # IPFS is already started.
+      return True
 
     if not os.path.isfile(IPFS_CONFIG_FILE):
       self.P(f"IPFS config file '{IPFS_CONFIG_FILE}' not found. Waiting for configuration...", color='y')
-      return
+      return result
 
     config = configparser.ConfigParser()
     try:
       config.read(IPFS_CONFIG_FILE)
     except Exception as e:
       self.P(f"Error reading {IPFS_CONFIG_FILE}: {e}", color='r')
-      return
+      return result
 
     if "ipfs" not in config:
       self.P(f"Section [ipfs] missing in {IPFS_CONFIG_FILE}.", color='r')
-      return
+      return result
 
     swarm_key = config["ipfs"].get("EE_SWARM_KEY_CONTENT_BASE64")
     ipfs_relay = config["ipfs"].get("EE_IPFS_RELAY")
 
     if not swarm_key or not ipfs_relay:
       self.P("Missing required config values in ifps.ini. Please provide both EE_SWARM_KEY_CONTENT_BASE64 and EE_IPFS_RELAY.", color='r')
-      return
+      return result
     
     os.environ['EE_IPFS_RELAY'] = ipfs_relay
     os.environ['EE_SWARM_KEY_CONTENT_BASE64'] = swarm_key
@@ -127,7 +156,8 @@ class IPFSRunner:
 
     if self.ipfs.ipfs_started:
       self.P("IPFS daemon started successfully.", color='g')
-    return
+      result = True
+    return result
 
 
   def process_command_file(self):
@@ -138,16 +168,18 @@ class IPFSRunner:
       - For each CID, pin it, download its content,
         and either display the file content (if text) or its size (if binary).
     """
+    
     if not os.path.isfile(COMMAND_FILE):
       self.P(f"Command file '{COMMAND_FILE}' not found.", color='r')
+      with open(COMMAND_FILE, "w") as f:
+        f.write("# Add CIDs here to process them.\n")   
       return
+
+    is_ipfs_warmed = self.ipfs.is_ipfs_warmed    
 
     try:
       with open(COMMAND_FILE, "r") as f:
         cids = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
-      # Clear command file, leaving header comment.
-      with open(COMMAND_FILE, "w") as f:
-        f.write("# Add CIDs here to process them.\n")
     except Exception as e:
       self.P(f"Failed to read command file: {e}", color='r')
       return
@@ -155,13 +187,18 @@ class IPFSRunner:
     if not cids:
       # self.P("No CIDs found in command file.", color='d')
       return
+    else:
+      self.P(f"Found {len(cids)} CIDs in command file. Processing", color='g')
 
+    failed_cids = []
+    
     for cid in cids:
       self.P(f"Processing CID: {cid}")
       try:
         is_avail = self.ipfs.is_cid_available(cid)
         if not is_avail:
-          self.P(f"CID {cid} is not available in IPFS.", color='r')
+          self.P(f"CID {cid} is not available in IPFS. {is_ipfs_warmed=}", color='r')
+          failed_cids.append(cid)
           continue
         self.P(f"Pinning CID {cid}...")
         file_path = self.ipfs.get_file(cid, local_folder=None, pin=True, timeout=10)
@@ -176,8 +213,24 @@ class IPFSRunner:
         else:
           size = os.path.getsize(file_path)
           self.P(f"Binary file {file_path} size: {size} bytes", color='y')
+          if self.is_pickle_file(file_path):
+            with open(file_path, "rb") as f:
+              content = pickle.load(f)
+            self.P(f"Content of {file_path}:\n{json.dumps(content,2)}")
       except Exception as e:
         self.P(f"Error processing CID {cid}: {e}", color='r')
+    #end for cid
+    
+    if failed_cids:
+      self.P(f"Failed to process the following CIDs: {', '.join(failed_cids)}", color='r')
+    # Clear command file, leaving unsolved CIDs for next run.
+    with open(COMMAND_FILE, "w") as f:
+      f.write("# Add CIDs here to process them.\n")        
+      for cid in failed_cids:
+        f.write(f"{cid}\n")
+    #end write 
+    return
+    
 
   def maybe_generate_status_file(self):
     """
@@ -230,11 +283,11 @@ class IPFSRunner:
       - Generate a new status file.
     The loop runs until a shutdown is requested.
     """
-    self.P("Starting IPFSRunner demo app...", color='b')
+    self.P(f"Starting IPFSRunner demo app v{__VER__}...", color='b', boxed=True)
     while not self.shutdown_requested:
       self.P("---- Cycle start ----", color='b')
-      self.maybe_check_and_start_ipfs()
-      if self.ipfs.ipfs_started:
+      ipfs_started = self.maybe_check_and_start_ipfs()
+      if ipfs_started:
         self.process_command_file()
         self.maybe_generate_status_file()
       self.P(f"---- Cycle complete, sleeping {CYCLE_INTERVAL} seconds ----\n", color='b')
@@ -243,7 +296,7 @@ class IPFSRunner:
     return
 
 if __name__ == "__main__":
-  from naeural_client import Logger
+  from ratio1 import Logger
   
   log = Logger("R1FSA", base_folder=".", app_folder=LOCAL_CACHE)
   runner = IPFSRunner(logger=log)

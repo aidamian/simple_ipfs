@@ -14,11 +14,12 @@ RUN wget https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz && 
 # Set working directory
 WORKDIR /app
 
-ENV IPFS_PATH=/app/_local_cache/.ipfs
+# ENV IPFS_PATH=/app/_local_cache/.ipfs
 
 # Copy Python dependencies and install them
-COPY requirements_app.txt ./requirements.txt
-RUN pip install -r requirements.txt
+# COPY requirements_app.txt ./requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade ratio1
 
 # Copy application code and configuration
 COPY ./app/ .
