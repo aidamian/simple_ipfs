@@ -29,7 +29,7 @@ from datetime import datetime
 
 from ratio1.ipfs import R1FSEngine
 
-__VER__ = "0.2.1"
+__VER__ = "0.2.2"
 
   
 
@@ -216,7 +216,7 @@ class IPFSRunner:
           if self.is_pickle_file(file_path):
             with open(file_path, "rb") as f:
               content = pickle.load(f)
-            self.P(f"Content of {file_path}:\n{json.dumps(content,2)}")
+            self.P(f"Content of {file_path}:\n{json.dumps(content,indent=2)}")
       except Exception as e:
         self.P(f"Error processing CID {cid}: {e}", color='r')
     #end for cid
@@ -243,6 +243,8 @@ class IPFSRunner:
     """
     if time.time() - self.__last_generated_time < (CYCLE_INTERVAL * 10) and self.__last_generated_time > 0:
       return
+    
+    self.P("Generating local file to be deliverd for other nodes...")
       
     self.__last_generated_time = time.time()
 
