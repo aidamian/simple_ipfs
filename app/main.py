@@ -25,6 +25,7 @@ import configparser
 import subprocess
 import signal
 import sys
+import uuid
 from datetime import datetime
 
 from ratio1.ipfs import R1FSEngine
@@ -152,7 +153,10 @@ class IPFSRunner:
     os.environ['EE_IPFS_RELAY'] = ipfs_relay
     os.environ['EE_SWARM_KEY_CONTENT_BASE64'] = swarm_key
     
-    self.ipfs = R1FSEngine(debug=True, logger=self.logger)
+    self.ipfs = R1FSEngine(
+      debug=True, 
+      logger=self.logger
+    )
 
     if self.ipfs.ipfs_started:
       self.P("IPFS daemon started successfully.", color='g')
@@ -179,29 +183,37 @@ class IPFSRunner:
 
     try:
       with open(COMMAND_FILE, "r") as f:
-        cids = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+        lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
     except Exception as e:
       self.P(f"Failed to read command file: {e}", color='r')
       return
 
-    if not cids:
+    if not lines:
       # self.P("No CIDs found in command file.", color='d')
       return
     else:
-      self.P(f"Found {len(cids)} CIDs in command file. Processing", color='g')
+      self.P(f"Found {len(lines)} CIDs in command file. Processing", color='g')
 
-    failed_cids = []
+    failed_lines = []
     
-    for cid in cids:
-      self.P(f"Processing CID: {cid}")
+    for line in lines:
+      cid = line.split()[0]
+      if len(line.split()) > 1:
+        secret = line.split()[1]
+      else:
+        secret = None
+      self.P(f"Processing CID: {cid} with secret: {secret}", color='g')
       try:
         is_avail = self.ipfs.is_cid_available(cid)
         if not is_avail:
           self.P(f"CID {cid} is not available in IPFS. {is_ipfs_warmed=}", color='r')
-          failed_cids.append(cid)
+          failed_lines.append(line)
           continue
         self.P(f"Pinning CID {cid}...")
-        file_path = self.ipfs.get_file(cid, local_folder=None, pin=True, timeout=10)
+        file_path = self.ipfs.get_file(
+          cid, local_folder=None, pin=True, timeout=10,
+          secret=secret,
+        )
         self.P(f"Downloaded file: {file_path}", color='g')
         if self.is_text_file(file_path):
           try:
@@ -221,13 +233,13 @@ class IPFSRunner:
         self.P(f"Error processing CID {cid}: {e}", color='r')
     #end for cid
     
-    if failed_cids:
-      self.P(f"Failed to process the following CIDs: {', '.join(failed_cids)}", color='r')
+    if failed_lines:
+      self.P(f"Failed to process the following CIDs: {', '.join(failed_lines)}", color='r')
     # Clear command file, leaving unsolved CIDs for next run.
     with open(COMMAND_FILE, "w") as f:
       f.write("# Add CIDs here to process them.\n")        
-      for cid in failed_cids:
-        f.write(f"{cid}\n")
+      for line in failed_lines:
+        f.write(f"{line}\n")
     #end write 
     return
     
@@ -247,6 +259,8 @@ class IPFSRunner:
     self.P("Generating local file to be deliverd for other nodes...")
       
     self.__last_generated_time = time.time()
+    
+    secured = random.choice([True, False])
 
     status = {
       "status" : {
@@ -256,24 +270,31 @@ class IPFSRunner:
         "agent" : self.ipfs.ipfs_agent,
         "downloaded_files": self.ipfs.downloaded_files,
         "uploaded_files": self.ipfs.uploaded_files,
+        "secured": secured,
       }
     }
+    
+    if secured:
+      secret = str(uuid.uuid4())[:4]
+    else:
+      secret = None
 
-    file_type = random.choice(["yaml", "pickle"])
+    file_type = "yaml" # random.choice(["yaml", "pickle"])
     str_now = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"status_{str_now}.{ 'yaml' if file_type == 'yaml' else 'pkl' }"
 
     if file_type == "yaml":
-      cid = self.ipfs.add_yaml(status)
+      cid = self.ipfs.add_yaml(status, secret=secret)
     else:
-      cid = self.ipfs.add_pickle(status)
+      cid = self.ipfs.add_pickle(status, secret=secret)
 
-    try:
-      self.P(f"Added {file_type} status file to IPFS. CID: {cid}")
-      with open("generated_cids.txt", "a") as f:
-        f.write(f"{cid}\n")
-    except Exception as e:
-      self.P(f"Error adding status file to IPFS: {e}", color='r')
+    if cid is not None:
+      try:
+        self.P(f"Added {file_type} status file to IPFS. CID: {cid}")
+        with open("generated_cids.txt", "a") as f:
+          f.write(f"{cid}\n")
+      except Exception as e:
+        self.P(f"Error adding status file to IPFS: {e}", color='r')
     return
 
 
