@@ -290,9 +290,9 @@ class IPFSRunner:
 
     if cid is not None:
       try:
-        self.P(f"Added {file_type} status file to IPFS. CID: {cid}")
-        with open("generated_cids.txt", "a") as f:
-          f.write(f"{cid}\n")
+        self.P(f"Added {file_type} status file to IPFS with secret: {secret} CID: {cid}")
+        with open("_local_cache/generated_cids.txt", "a") as f:
+          f.write(f"{cid} {secret}\n")
       except Exception as e:
         self.P(f"Error adding status file to IPFS: {e}", color='r')
     return
