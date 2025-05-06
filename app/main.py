@@ -98,6 +98,9 @@ class IPFSRunner:
     Handle termination signals to gracefully shutdown the runner.
     """
     self.P("Shutdown signal received. Exiting...", color='y')
+    if self.spawn_subproc:
+      self.P("Terminating subprocess...", color='y')
+      self.subproc.kill()
     self.shutdown_requested = True
     return
 
@@ -323,8 +326,8 @@ class IPFSRunner:
           self.P("Starting subprocess...", color='b')
           self.spawn_subproc_executed = True
           try:            
-            subprocess.Popen(["python3", "subproc.py"])
-            self.P("Subprocess started. Sleeping...", color='g')            
+            self.subproc = subprocess.Popen(["python3", "subproc.py"])
+            self.P(f"Subprocess {self.subproc} started. Sleeping...", color='g')            
             time.sleep(10)
           except Exception as e:
             self.P(f"Error starting subprocess: {e}", color='r')
