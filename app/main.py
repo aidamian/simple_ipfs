@@ -85,6 +85,8 @@ class IPFSRunner:
       with open(COMMAND_FILE, "w") as f:
         f.write("# Add CIDs here to process them.\n")
       self.P(f"Command file '{COMMAND_FILE}' created. Add CIDs to process.", color='y')
+      
+    self.spawn_subproc = os.environ.get("SUBPROC", "0").upper()  in ["1", "TRUE", "YES"]
     return
 
   def handle_shutdown(self, signum, frame):
