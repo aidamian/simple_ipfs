@@ -1,0 +1,11 @@
+# Use an official Python runtime as base
+FROM python:3.11-slim
+
+# Install IPFS
+RUN apt-get update && apt-get install -y wget && apt-get install -y tar
+         
+RUN wget https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz && \
+  tar -xvzf kubo_v0.32.1_linux-amd64.tar.gz && \
+  cd kubo && \
+  bash install.sh
+

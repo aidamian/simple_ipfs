@@ -58,6 +58,9 @@ class IPFSRunner:
     self.shutdown_requested = False
     self.logger = logger
     
+    self.spawn_subproc = False
+    self.spawn_subproc_executed = False
+    
     self.__last_generated_time = 0
 
     # Register signal handlers for graceful shutdown.
@@ -87,6 +90,7 @@ class IPFSRunner:
       self.P(f"Command file '{COMMAND_FILE}' created. Add CIDs to process.", color='y')
       
     self.spawn_subproc = os.environ.get("SUBPROC", "0").upper()  in ["1", "TRUE", "YES"]
+    self.P(f"Initialized with spawn_subproc={self.spawn_subproc}", color='y')
     return
 
   def handle_shutdown(self, signum, frame):
@@ -315,6 +319,15 @@ class IPFSRunner:
       if ipfs_started:
         self.process_command_file()
         self.maybe_generate_status_file()
+        if self.spawn_subproc and not self.spawn_subproc_executed:
+          self.P("Starting subprocess...", color='b')
+          self.spawn_subproc_executed = True
+          try:            
+            subprocess.Popen(["python3", "subproc.py"])
+            self.P("Subprocess started. Sleeping...", color='g')            
+            time.sleep(10)
+          except Exception as e:
+            self.P(f"Error starting subprocess: {e}", color='r')
       self.P(f"---- Cycle complete, sleeping {CYCLE_INTERVAL} seconds ----\n", color='b')
       time.sleep(CYCLE_INTERVAL)
     self.P("IPFSRunner shutting down.", color='y')
